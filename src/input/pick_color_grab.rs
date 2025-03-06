@@ -1,4 +1,7 @@
+use smithay::backend::allocator::Fourcc;
 use smithay::backend::input::ButtonState;
+use smithay::backend::renderer::element::utils::{Relocate, RelocateRenderElement};
+use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::input::pointer::{
     AxisFrame, ButtonEvent, CursorImageStatus, GestureHoldBeginEvent, GestureHoldEndEvent,
     GesturePinchBeginEvent, GesturePinchEndEvent, GesturePinchUpdateEvent, GestureSwipeBeginEvent,
@@ -6,12 +9,7 @@ use smithay::input::pointer::{
     MotionEvent, PointerGrab, PointerInnerHandle, RelativeMotionEvent,
 };
 use smithay::input::SeatHandler;
-use smithay::utils::{Logical, Point};
-use smithay::backend::renderer::gles::GlesRenderer;
-use smithay::utils::Physical;
-use smithay::utils::Scale;
-use smithay::backend::allocator::Fourcc;
-use smithay::backend::renderer::element::utils::{Relocate, RelocateRenderElement};
+use smithay::utils::{Logical, Physical, Point, Scale};
 
 use crate::niri::State;
 use crate::render_helpers::render_to_vec;
@@ -77,42 +75,45 @@ impl PointerGrab<State> for PickColorGrab {
                 let output_info = data.niri.output_under(location);
 
                 if let Some((output, pos_within_output)) = output_info {
-                    data.backend.with_primary_renderer(|renderer| {
-                        let scale = Scale::from(output.current_scale().fractional_scale());
-                        let physical_pos: Point<i32, Physical> = pos_within_output.to_physical_precise_round(scale);
-                        let size = smithay::utils::Size::<i32, Physical>::from((1, 1));
+                    data.backend
+                        .with_primary_renderer(|renderer| {
+                            let scale = Scale::from(output.current_scale().fractional_scale());
+                            let physical_pos: Point<i32, Physical> =
+                                pos_within_output.to_physical_precise_round(scale);
+                            let size = smithay::utils::Size::<i32, Physical>::from((1, 1));
 
-                        let elements = data.niri.render::<GlesRenderer>(
-                            renderer,
-                            output,
-                            false,
-                            crate::render_helpers::RenderTarget::ScreenCapture,
-                        );
+                            let elements = data.niri.render::<GlesRenderer>(
+                                renderer,
+                                output,
+                                false,
+                                crate::render_helpers::RenderTarget::ScreenCapture,
+                            );
 
-                        let pixels = match render_to_vec(
-                            renderer,
-                            size,
-                            scale,
-                            output.current_transform(),
-                            Fourcc::Abgr8888,
-                            elements.iter().rev().map(|elem| {
-                                RelocateRenderElement::from_element(
-                                    elem,
-                                    Point::from((-physical_pos.x, -physical_pos.y)),
-                                    Relocate::Relative,
-                                )
-                            }),
-                        ) {
-                            Ok(pixels) => pixels,
-                            Err(_) => return None,
-                        };
+                            let pixels = match render_to_vec(
+                                renderer,
+                                size,
+                                scale,
+                                output.current_transform(),
+                                Fourcc::Abgr8888,
+                                elements.iter().rev().map(|elem| {
+                                    RelocateRenderElement::from_element(
+                                        elem,
+                                        Point::from((-physical_pos.x, -physical_pos.y)),
+                                        Relocate::Relative,
+                                    )
+                                }),
+                            ) {
+                                Ok(pixels) => pixels,
+                                Err(_) => return None,
+                            };
 
-                        if pixels.len() == 4 {
-                            Some([pixels[0], pixels[1], pixels[2], pixels[3]])
-                        } else {
-                            None
-                        }
-                    }).flatten()
+                            if pixels.len() == 4 {
+                                Some([pixels[0], pixels[1], pixels[2], pixels[3]])
+                            } else {
+                                None
+                            }
+                        })
+                        .flatten()
                 } else {
                     None
                 }

@@ -283,8 +283,14 @@ pub fn handle_msg(msg: Msg, json: bool) -> anyhow::Result<()> {
             }
 
             if let Some(color) = color {
-                println!("Picked color: rgba({}, {}, {}, {})", color[0], color[1], color[2], color[3]);
-                println!("Hex: #{:02x}{:02x}{:02x}{:02x}", color[0], color[1], color[2], color[3]);
+                println!(
+                    "Picked color: rgba({}, {}, {}, {})",
+                    color[0], color[1], color[2], color[3]
+                );
+                println!(
+                    "Hex: #{:02x}{:02x}{:02x}{:02x}",
+                    color[0], color[1], color[2], color[3]
+                );
             } else {
                 println!("No color was picked");
             }
