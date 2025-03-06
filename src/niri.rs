@@ -357,6 +357,7 @@ pub struct Niri {
     pub exit_confirm_dialog: Option<ExitConfirmDialog>,
 
     pub pick_window: Option<async_channel::Sender<Option<MappedId>>>,
+    pub pick_color: Option<async_channel::Sender<Option<[u8; 4]>>>,
 
     pub debug_draw_opaque_regions: bool,
     pub debug_draw_damage: bool,
@@ -2175,6 +2176,7 @@ impl Niri {
             exit_confirm_dialog,
 
             pick_window: None,
+            pick_color: None,
 
             debug_draw_opaque_regions: false,
             debug_draw_damage: false,
