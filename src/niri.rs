@@ -1750,57 +1750,71 @@ impl State {
     ) {
         match msg {
             ScreenshotToNiri::TakeScreenshot { include_cursor } => {
-                let _span = tracy_client::span!("TakeScreenshot");
+                self.handle_take_screenshot(to_screenshot, include_cursor);
+            }
+            ScreenshotToNiri::PickColor => {
+                self.handle_pick_color(to_screenshot);
+            }
+        }
+    }
 
-                let rv = self.backend.with_primary_renderer(|renderer| {
-                    let on_done = {
-                        let to_screenshot = to_screenshot.clone();
-                        move |path| {
-                            let msg = NiriToScreenshot::ScreenshotResult(Some(path));
-                            if let Err(err) = to_screenshot.send_blocking(msg) {
-                                warn!("error sending path to screenshot: {err:?}");
-                            }
-                        }
-                    };
+    #[cfg(feature = "dbus")]
+    fn handle_take_screenshot(
+        &mut self,
+        to_screenshot: &async_channel::Sender<NiriToScreenshot>,
+        include_cursor: bool,
+    ) {
+        let _span = tracy_client::span!("TakeScreenshot");
 
-                    let res = self
-                        .niri
-                        .screenshot_all_outputs(renderer, include_cursor, on_done);
-
-                    if let Err(err) = res {
-                        warn!("error taking a screenshot: {err:?}");
-
-                        let msg = NiriToScreenshot::ScreenshotResult(None);
-                        if let Err(err) = to_screenshot.send_blocking(msg) {
-                            warn!("error sending None to screenshot: {err:?}");
-                        }
-                    }
-                });
-
-                if rv.is_none() {
-                    let msg = NiriToScreenshot::ScreenshotResult(None);
+        let rv = self.backend.with_primary_renderer(|renderer| {
+            let on_done = {
+                let to_screenshot = to_screenshot.clone();
+                move |path| {
+                    let msg = NiriToScreenshot::ScreenshotResult(Some(path));
                     if let Err(err) = to_screenshot.send_blocking(msg) {
-                        warn!("error sending None to screenshot: {err:?}");
+                        warn!("error sending path to screenshot: {err:?}");
+                    }
+                }
+            };
+
+            let res = self
+                .niri
+                .screenshot_all_outputs(renderer, include_cursor, on_done);
+
+            if let Err(err) = res {
+                warn!("error taking a screenshot: {err:?}");
+
+                let msg = NiriToScreenshot::ScreenshotResult(None);
+                if let Err(err) = to_screenshot.send_blocking(msg) {
+                    warn!("error sending None to screenshot: {err:?}");
+                }
+            }
+        });
+
+        if rv.is_none() {
+            let msg = NiriToScreenshot::ScreenshotResult(None);
+            if let Err(err) = to_screenshot.send_blocking(msg) {
+                warn!("error sending None to screenshot: {err:?}");
+            }
+        }
+    }
+
+    #[cfg(feature = "dbus")]
+    fn handle_pick_color(&mut self, to_screenshot: &async_channel::Sender<NiriToScreenshot>) {
+        let (tx, rx) = async_channel::bounded(1);
+        self.niri.pick_color = Some(tx);
+
+        std::thread::spawn({
+            let to_screenshot = to_screenshot.clone();
+            move || {
+                if let Ok(color_value) = rx.recv_blocking() {
+                    let msg = NiriToScreenshot::ColorResult(color_value);
+                    if let Err(err) = to_screenshot.send_blocking(msg) {
+                        warn!("error sending color result to screenshot: {err:?}");
                     }
                 }
             }
-            ScreenshotToNiri::PickColor => {
-                let (tx, rx) = async_channel::bounded(1);
-                self.niri.pick_color = Some(tx);
-
-                std::thread::spawn({
-                    let to_screenshot = to_screenshot.clone();
-                    move || {
-                        if let Ok(color_value) = rx.recv_blocking() {
-                            let msg = NiriToScreenshot::ColorResult(color_value);
-                            if let Err(err) = to_screenshot.send_blocking(msg) {
-                                warn!("error sending color result to screenshot: {err:?}");
-                            }
-                        }
-                    }
-                });
-            }
-        }
+        });
     }
 
     #[cfg(feature = "dbus")]
