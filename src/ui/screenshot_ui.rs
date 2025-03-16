@@ -301,6 +301,34 @@ impl ScreenshotUi {
         }
     }
 
+    pub fn resize_inward_left(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.2.x -= DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn resize_inward_right(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.1.x += DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn resize_inward_up(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.2.y -= DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn resize_inward_down(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.1.y += DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
     pub fn advance_animations(&mut self) {}
 
     pub fn are_animations_ongoing(&self) -> bool {
@@ -720,6 +748,12 @@ fn action(raw: Keysym, mods: ModifiersState) -> Option<Action> {
         Keysym::Right if mods.logo => return Some(Action::ResizeScreenshotRight),
         Keysym::Up if mods.logo => return Some(Action::ResizeScreenshotUp),
         Keysym::Down if mods.logo => return Some(Action::ResizeScreenshotDown),
+
+        // Resize inward.
+        Keysym::Left if mods.alt => return Some(Action::ResizeScreenshotInwardLeft),
+        Keysym::Right if mods.alt => return Some(Action::ResizeScreenshotInwardRight),
+        Keysym::Up if mods.alt => return Some(Action::ResizeScreenshotInwardUp),
+        Keysym::Down if mods.alt => return Some(Action::ResizeScreenshotInwardDown),
 
         _ => {}
     }

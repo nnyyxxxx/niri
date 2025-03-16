@@ -1466,6 +1466,10 @@ pub enum Action {
     ResizeScreenshotRight,
     ResizeScreenshotUp,
     ResizeScreenshotDown,
+    ResizeScreenshotInwardLeft,
+    ResizeScreenshotInwardRight,
+    ResizeScreenshotInwardUp,
+    ResizeScreenshotInwardDown,
     Screenshot(#[knuffel(property(name = "show-pointer"), default = true)] bool),
     ScreenshotScreen(
         #[knuffel(property(name = "write-to-disk"), default = true)] bool,

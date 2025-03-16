@@ -650,6 +650,22 @@ impl State {
                 self.niri.screenshot_ui.resize_down();
                 self.niri.queue_redraw_all();
             }
+            Action::ResizeScreenshotInwardLeft => {
+                self.niri.screenshot_ui.resize_inward_left();
+                self.niri.queue_redraw_all();
+            }
+            Action::ResizeScreenshotInwardRight => {
+                self.niri.screenshot_ui.resize_inward_right();
+                self.niri.queue_redraw_all();
+            }
+            Action::ResizeScreenshotInwardUp => {
+                self.niri.screenshot_ui.resize_inward_up();
+                self.niri.queue_redraw_all();
+            }
+            Action::ResizeScreenshotInwardDown => {
+                self.niri.screenshot_ui.resize_inward_down();
+                self.niri.queue_redraw_all();
+            }
             Action::Screenshot(show_cursor) => {
                 self.open_screenshot_ui(show_cursor);
             }
@@ -3419,6 +3435,10 @@ fn allowed_during_screenshot(action: &Action) -> bool {
             | Action::ResizeScreenshotRight
             | Action::ResizeScreenshotUp
             | Action::ResizeScreenshotDown
+            | Action::ResizeScreenshotInwardLeft
+            | Action::ResizeScreenshotInwardRight
+            | Action::ResizeScreenshotInwardUp
+            | Action::ResizeScreenshotInwardDown
     )
 }
 
