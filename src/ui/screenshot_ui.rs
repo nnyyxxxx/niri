@@ -39,6 +39,9 @@ const TEXT_SHOW_P: &str =
     "Press <span face='mono' bgcolor='#2C2C2C'> Space </span> to save the screenshot.\n\
      Press <span face='mono' bgcolor='#2C2C2C'> P </span> to show the pointer.";
 
+/// How many pixels the move commands move the selection.
+const DIRECTIONAL_MOVE_PX: i32 = 50;
+
 // Ideally the screenshot UI should support cross-output selections. However, that poses some
 // technical challenges when the outputs have different scales and such. So, this implementation
 // allows only single-output selections for now.
@@ -236,6 +239,66 @@ impl ScreenshotUi {
 
     pub fn is_open(&self) -> bool {
         matches!(self, ScreenshotUi::Open { .. })
+    }
+
+    pub fn move_left(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.1.x -= DIRECTIONAL_MOVE_PX;
+            selection.2.x -= DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn move_right(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.1.x += DIRECTIONAL_MOVE_PX;
+            selection.2.x += DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn move_up(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.1.y -= DIRECTIONAL_MOVE_PX;
+            selection.2.y -= DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn move_down(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.1.y += DIRECTIONAL_MOVE_PX;
+            selection.2.y += DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn resize_left(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.1.x -= DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn resize_right(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.2.x += DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn resize_up(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.1.y -= DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
+    }
+
+    pub fn resize_down(&mut self) {
+        if let Self::Open { selection, .. } = self {
+            selection.2.y += DIRECTIONAL_MOVE_PX;
+            self.update_buffers();
+        }
     }
 
     pub fn advance_animations(&mut self) {}
@@ -643,6 +706,22 @@ fn action(raw: Keysym, mods: ModifiersState) -> Option<Action> {
 
     if !mods.ctrl && raw == Keysym::p {
         return Some(Action::ScreenshotTogglePointer);
+    }
+
+    match raw {
+        // Move.
+        Keysym::Left if mods.ctrl => return Some(Action::MoveScreenshotLeft),
+        Keysym::Right if mods.ctrl => return Some(Action::MoveScreenshotRight),
+        Keysym::Up if mods.ctrl => return Some(Action::MoveScreenshotUp),
+        Keysym::Down if mods.ctrl => return Some(Action::MoveScreenshotDown),
+
+        // Resize.
+        Keysym::Left if mods.logo => return Some(Action::ResizeScreenshotLeft),
+        Keysym::Right if mods.logo => return Some(Action::ResizeScreenshotRight),
+        Keysym::Up if mods.logo => return Some(Action::ResizeScreenshotUp),
+        Keysym::Down if mods.logo => return Some(Action::ResizeScreenshotDown),
+
+        _ => {}
     }
 
     None

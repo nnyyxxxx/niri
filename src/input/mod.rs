@@ -618,6 +618,38 @@ impl State {
                 self.niri.screenshot_ui.toggle_pointer();
                 self.niri.queue_redraw_all();
             }
+            Action::MoveScreenshotLeft => {
+                self.niri.screenshot_ui.move_left();
+                self.niri.queue_redraw_all();
+            }
+            Action::MoveScreenshotRight => {
+                self.niri.screenshot_ui.move_right();
+                self.niri.queue_redraw_all();
+            }
+            Action::MoveScreenshotUp => {
+                self.niri.screenshot_ui.move_up();
+                self.niri.queue_redraw_all();
+            }
+            Action::MoveScreenshotDown => {
+                self.niri.screenshot_ui.move_down();
+                self.niri.queue_redraw_all();
+            }
+            Action::ResizeScreenshotLeft => {
+                self.niri.screenshot_ui.resize_left();
+                self.niri.queue_redraw_all();
+            }
+            Action::ResizeScreenshotRight => {
+                self.niri.screenshot_ui.resize_right();
+                self.niri.queue_redraw_all();
+            }
+            Action::ResizeScreenshotUp => {
+                self.niri.screenshot_ui.resize_up();
+                self.niri.queue_redraw_all();
+            }
+            Action::ResizeScreenshotDown => {
+                self.niri.screenshot_ui.resize_down();
+                self.niri.queue_redraw_all();
+            }
             Action::Screenshot(show_cursor) => {
                 self.open_screenshot_ui(show_cursor);
             }
@@ -3379,6 +3411,14 @@ fn allowed_during_screenshot(action: &Action) -> bool {
             | Action::Suspend
             | Action::PowerOffMonitors
             | Action::PowerOnMonitors
+            | Action::MoveScreenshotLeft
+            | Action::MoveScreenshotRight
+            | Action::MoveScreenshotUp
+            | Action::MoveScreenshotDown
+            | Action::ResizeScreenshotLeft
+            | Action::ResizeScreenshotRight
+            | Action::ResizeScreenshotUp
+            | Action::ResizeScreenshotDown
     )
 }
 

@@ -1458,6 +1458,14 @@ pub enum Action {
     CancelScreenshot,
     #[knuffel(skip)]
     ScreenshotTogglePointer,
+    MoveScreenshotLeft,
+    MoveScreenshotRight,
+    MoveScreenshotUp,
+    MoveScreenshotDown,
+    ResizeScreenshotLeft,
+    ResizeScreenshotRight,
+    ResizeScreenshotUp,
+    ResizeScreenshotDown,
     Screenshot(#[knuffel(property(name = "show-pointer"), default = true)] bool),
     ScreenshotScreen(
         #[knuffel(property(name = "write-to-disk"), default = true)] bool,
