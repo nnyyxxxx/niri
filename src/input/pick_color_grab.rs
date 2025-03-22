@@ -1,3 +1,4 @@
+use niri_ipc::PickedColor;
 use smithay::backend::allocator::Fourcc;
 use smithay::backend::input::ButtonState;
 use smithay::backend::renderer::element::utils::{Relocate, RelocateRenderElement};
@@ -16,15 +17,11 @@ use crate::render_helpers::render_to_vec;
 
 pub struct PickColorGrab {
     start_data: PointerGrabStartData<State>,
-    temporary_location: Option<Point<f64, Logical>>,
 }
 
 impl PickColorGrab {
     pub fn new(start_data: PointerGrabStartData<State>) -> Self {
-        Self {
-            start_data,
-            temporary_location: None,
-        }
+        Self { start_data }
     }
 
     fn on_ungrab(&mut self, state: &mut State) {
@@ -38,14 +35,15 @@ impl PickColorGrab {
         state.niri.queue_redraw_all();
     }
 
-    fn pick_color_at_point(location: Point<f64, Logical>, data: &mut State) -> Option<[u8; 4]> {
+    fn pick_color_at_point(location: Point<f64, Logical>, data: &mut State) -> Option<PickedColor> {
         let (output, pos_within_output) = data.niri.output_under(location)?;
 
         data.backend
             .with_primary_renderer(|renderer| {
                 let scale = Scale::from(output.current_scale().fractional_scale());
-                let physical_pos: Point<i32, Physical> =
-                    pos_within_output.to_physical_precise_round(scale);
+                let physical_pos_f64 = pos_within_output.to_physical(scale);
+                let phys_x = physical_pos_f64.x.floor() as i32;
+                let phys_y = physical_pos_f64.y.floor() as i32;
                 let size = smithay::utils::Size::<i32, Physical>::from((1, 1));
 
                 let elements = data.niri.render::<GlesRenderer>(
@@ -62,11 +60,8 @@ impl PickColorGrab {
                     output.current_transform(),
                     Fourcc::Abgr8888,
                     elements.iter().rev().map(|elem| {
-                        RelocateRenderElement::from_element(
-                            elem,
-                            Point::from((-physical_pos.x, -physical_pos.y)),
-                            Relocate::Relative,
-                        )
+                        let offset = Point::<i32, Physical>::from((-phys_x, -phys_y));
+                        RelocateRenderElement::from_element(elem, offset, Relocate::Relative)
                     }),
                 ) {
                     Ok(pixels) => pixels,
@@ -74,8 +69,18 @@ impl PickColorGrab {
                 };
 
                 if pixels.len() == 4 {
-                    Some([pixels[0], pixels[1], pixels[2], pixels[3]])
+                    let rgba = [
+                        f64::from(pixels[0]) / 255.0,
+                        f64::from(pixels[1]) / 255.0,
+                        f64::from(pixels[2]) / 255.0,
+                        f64::from(pixels[3]) / 255.0,
+                    ];
+                    Some(PickedColor { rgba })
                 } else {
+                    error!(
+                        "Unexpected pixel data length: {} (expected 4)",
+                        pixels.len()
+                    );
                     None
                 }
             })
@@ -114,12 +119,7 @@ impl PointerGrab<State> for PickColorGrab {
             return;
         }
 
-        self.temporary_location = Some(handle.current_location());
-
-        let color = match self.temporary_location {
-            Some(location) => Self::pick_color_at_point(location, data),
-            None => None,
-        };
+        let color = Self::pick_color_at_point(handle.current_location(), data);
 
         if let Some(tx) = data.niri.pick_color.take() {
             let _ = tx.send_blocking(color);

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use niri_ipc::PickedColor;
 use zbus::fdo::{self, RequestNameFlags};
 use zbus::interface;
 use zbus::zvariant::OwnedValue;
@@ -10,16 +11,24 @@ use super::Start;
 pub struct Screenshot {
     to_niri: calloop::channel::Sender<ScreenshotToNiri>,
     from_niri: async_channel::Receiver<NiriToScreenshot>,
+    to_niri_color: calloop::channel::Sender<ColorPickToNiri>,
+    from_niri_color: async_channel::Receiver<NiriToColorPick>,
 }
 
 pub enum ScreenshotToNiri {
     TakeScreenshot { include_cursor: bool },
-    PickColor,
 }
 
 pub enum NiriToScreenshot {
     ScreenshotResult(Option<PathBuf>),
-    ColorResult(Option<[u8; 4]>),
+}
+
+pub enum ColorPickToNiri {
+    PickColor,
+}
+
+pub enum NiriToColorPick {
+    ColorResult(Option<PickedColor>),
 }
 
 #[interface(name = "org.gnome.Shell.Screenshot")]
@@ -43,9 +52,6 @@ impl Screenshot {
             Ok(NiriToScreenshot::ScreenshotResult(None)) => {
                 return Err(fdo::Error::Failed("internal error".to_owned()));
             }
-            Ok(NiriToScreenshot::ColorResult(_)) => {
-                return Err(fdo::Error::Failed("unexpected color result".to_owned()));
-            }
             Err(err) => {
                 warn!("error receiving message from niri: {err:?}");
                 return Err(fdo::Error::Failed("internal error".to_owned()));
@@ -56,20 +62,15 @@ impl Screenshot {
     }
 
     async fn pick_color(&self) -> fdo::Result<HashMap<String, OwnedValue>> {
-        if let Err(err) = self.to_niri.send(ScreenshotToNiri::PickColor) {
+        if let Err(err) = self.to_niri_color.send(ColorPickToNiri::PickColor) {
             warn!("error sending pick color message to niri: {err:?}");
             return Err(fdo::Error::Failed("internal error".to_owned()));
         }
 
-        let color = match self.from_niri.recv().await {
-            Ok(NiriToScreenshot::ColorResult(Some(rgba))) => rgba,
-            Ok(NiriToScreenshot::ColorResult(None)) => {
+        let color = match self.from_niri_color.recv().await {
+            Ok(NiriToColorPick::ColorResult(Some(color))) => color,
+            Ok(NiriToColorPick::ColorResult(None)) => {
                 return Err(fdo::Error::Failed("no color picked".to_owned()));
-            }
-            Ok(NiriToScreenshot::ScreenshotResult(_)) => {
-                return Err(fdo::Error::Failed(
-                    "unexpected screenshot result".to_owned(),
-                ));
             }
             Err(err) => {
                 warn!("error receiving message from niri: {err:?}");
@@ -77,11 +78,7 @@ impl Screenshot {
             }
         };
 
-        let rgb = [
-            f64::from(color[0]) / 255.0,
-            f64::from(color[1]) / 255.0,
-            f64::from(color[2]) / 255.0,
-        ];
+        let rgb = [color.rgba[0], color.rgba[1], color.rgba[2]];
 
         let mut result = HashMap::new();
         let rgb_slice: &[f64] = &rgb;
@@ -98,8 +95,15 @@ impl Screenshot {
     pub fn new(
         to_niri: calloop::channel::Sender<ScreenshotToNiri>,
         from_niri: async_channel::Receiver<NiriToScreenshot>,
+        to_niri_color: calloop::channel::Sender<ColorPickToNiri>,
+        from_niri_color: async_channel::Receiver<NiriToColorPick>,
     ) -> Self {
-        Self { to_niri, from_niri }
+        Self {
+            to_niri,
+            from_niri,
+            to_niri_color,
+            from_niri_color,
+        }
     }
 }
 
